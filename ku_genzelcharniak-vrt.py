@@ -93,9 +93,11 @@ def addup(term, ngrams=None, ngramtypes=None, prevterms=None):
         ngrams["_"] = 1
 
     # same counters for all n-grams (tokens and types of orders 1,2,3)
-    for i in range(len(prevterms), 0, -1):  # iterate from 3 to 1
+    # sliding window
+    # iterate from 3 to 1: unigram and bigram probabilities are used for words in beginnings of sentences
+    for i in range(len(prevterms), 0, -1):
         ngram = prevterms[i - 1] + "_" + ngram
-        # splitting once starting from the right (from the end), effectively deleting the last word
+        # splitting once starting from the right (from the end) and getting first element, effectively deleting the last word
         context = ngram.rsplit("_", 1)[0]
         # adding bigrams and trigrams to the unigrams obtained in collect_terms
         if ngram in ngrams:
@@ -133,7 +135,7 @@ def addupdoc(term, ngrams=None, ngramtypes=None, prevterms=None, docngrams=None,
         docngrams["_"] += 1
     else:
         docngrams["_"] = 1
-    for i in range(len(prevterms), 0, -1):  # iterate from 3 to 1
+    for i in range(len(prevterms), 0, -1):  # iterate from max 3 to 1
         ngram = prevterms[i - 1] + "_" + ngram
         context = ngram.rsplit("_", 1)[0]
         if ngram in docngrams:
@@ -164,6 +166,7 @@ def get_wb_ent(ngram, count=None, docngramtypes=None, docngrams=None):
     rest = ngram
     if "_" in context:
         context = context.split("_")[0]
+        # split once at the first _ and get the contents on the right side of the split, in effect losing the first word
         rest = rest.split("_", 1)[1]
     else:
         context = "_"
@@ -202,10 +205,10 @@ def get_wb_cross(ngram, count=None, ngrams=None, docngrams=None, restngramtypes=
         rest = ''
 
     typecount = restngramtypes[context]
-
+    # if freq in corpus == freq in the current doc
     if ngrams[ngram] - docngrams[ngram] == 0:
         return get_wb_cross(rest, count=count, ngrams=ngrams, docngrams=docngrams, restngramtypes=restngramtypes)
-
+    # maximum likelihood estimation: counts (excluding this doc) normalised to size of corpus (excluding this doc)
     mle = (ngrams[ngram] - docngrams[ngram]) / (ngrams[context] - docngrams[context])
     lambda1 = (ngrams[context] - docngrams[context]) / (ngrams[context] - docngrams[context] + typecount)
 
@@ -219,12 +222,14 @@ def get_cross_bits(term, prevterms=None, ngrams=None, docngrams=None, restngramt
     ngram = term
     for i in range(len(prevterms), 0, -1):
         ngram = prevterms[i - 1] + "_" + ngram
+        # own probability of the term:
         prob = get_wb_cross(ngram, count=0, ngrams=ngrams, docngrams=docngrams, restngramtypes=restngramtypes)
-
-        if cache_tokens > 0:
-            # the backoff unigram model in (1-$gamma) also exludes the current document, probably not a big deal
+        if cache_tokens > 0:  # skipping the first term (i.e. added SENT in the doc beginning)
+            # the model exludes the current document:
+            # (1-gamma) is multiplied by the quotiont of (counts of item less counts in the current doc) and (size of corpus less current doc)
             try:
-                # here, new items are routinely absent from last_occ and cache_terms dicts, they are added below and
+                # here, new terms are routinely absent from last_occ and cache_terms dicts,
+                # they are added below the call of get_cross_bits function in compute_bits
                 # there is no update loop for these dicts
                 cacheprob = (gamma * (tau ** (cache_count - last_occ[term])) * cache_terms[term] / cache_tokens) + (
                         1 - gamma) * ((ngrams[term] - docngrams[term]) / (ngrams["_"] - docngrams["_"]))
@@ -251,10 +256,12 @@ def compute_bits(lines=None, terms=None, ngrams=None, docngrams=None, docngramty
     c_sent = 0
     cross_sum = 0
     ent_sum = 0
-    cache_terms = {}
-    cache_tokens = 0  # cache token count
-    last_occ = {}  # hash for last occurrence of a term in document (used for decay of cache)
+    # cache_... seem to be doc-level counts: they are advanced inside lines, refreshed after each text id=
+    cache_tokens = 0  # with tau==1, cache_tokens has the same value as cache_count, i.e position of the item in the doc
     cache_count = 0
+    last_occ = {}  # hash for last occurrence of a term in document (used for decay of cache)
+    cache_terms = {}
+
     out_buffer = ""
     sent_buffer = ""
     sentence_start = 0
@@ -355,9 +362,9 @@ def compute_entropy(file, outfile, terms=None, ngrams=None, ngramtypes=None, opt
                     print(line.split('"')[1])
                     lines = []
                     lines.append(line)
-                    docngrams = {}
-                    docngramtypes = {}
-                    restngramtypes = {}
+                    docngrams = {}  # all ngram tokens
+                    docngramtypes = {} # counts of ngramtypes in current document, stores in lines variable
+                    restngramtypes = {}  # counts of ngramtypes in other documents
 
                     # insert a sentence marker at the beginning of a document
                     prevterms = []
