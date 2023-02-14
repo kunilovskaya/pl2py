@@ -17,7 +17,7 @@ Surprisal is -log2(prob), i.e. inverse probability measured in bits of informati
 * PROBABILITY is a sum of (1) products between freq_of_4gram_over_freq_of_3gram_left_context(aka MLE) and 
   relative freq of its 3gram preceding context (lambda1, "how unusual is the context in the corpus") + (2)  
   and inverse-lambda1_weighted sum of probabilities for component ngrams in the corpus (excluding current doc)
-* CROSS- and SELF-: probability can be estimated with regard to the whole corpus (with the exception of the current document) and based on the current document only)
+* CROSS- and SELF-: probability is estimated with regard to the whole corpus (with the exception of the current document) and based on the current document only)
 * there is a function that estimates "cache decay" (position of ngram in the doc), employing gamma, but it seems to have no affect on the main calculations, given default parameters
 * LM backs off to lower-order ngrams to estimate probability of ngrams missing from current doc or the rest of the corpus
 * I don't see calculations of entropy measures, Shannon or relative (aka Kullback-Leibler divergence or cross-entropy), 
