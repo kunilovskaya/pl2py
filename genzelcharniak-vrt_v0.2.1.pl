@@ -1,4 +1,8 @@
 #!/usr/bin/perl
+# this is the original script from /data/resources/corpora/bin/ @134.96.90.14
+# I added testprints of intermediary variables.
+# TESTRUN:
+# perl genzelcharniak-vrt_v0.2.1.pl input/brown_exerpt_A-1.vrt output/perl_BROWN-SPR.vrt
 
 use 5.010;
 
@@ -83,7 +87,6 @@ collectterms($infile);
 my $size_uni = keys %terms;
 print "Types (terms-hash): $size_uni\n";
 # second pass: compute ngram frequencies
-
 collectngrams($infile);
 
 {my $size_all_ngrams = keys %ngrams;
@@ -94,6 +97,17 @@ print "Collected uni- and bigram contexts aka ngramtypes: $size\n"};
 
 # third pass: compute cache frequencies and bits, etc., two passes per document
 # two passes per document: First compute local ngram frequencies, then compute and output bits.
+
+# Open a file for writing
+# open(my $fh, '>', 'cr_truest_ngramtypes.txt') or die "Could not open file: $!";
+#
+# # Loop through the hash and print key-value pairs to the file
+# foreach my $key (keys %ngramtypes) {
+#     print $fh "$key\t$ngramtypes{$key}\n";
+# }
+#
+# # Close the file
+# close $fh;
 
 computeentropy($infile);
 
@@ -429,6 +443,7 @@ sub addupdoc {
 	for ( my $i = scalar(@prevterms) ; $i > 0 ; $i-- ) {
 		$ngram = $prevterms[ $i - 1 ] . "\r" . $ngram;
 		my $context = $ngram;
+		# This pattern matches all the characters at the end of the string that follow a carriage return, excluding the carriage return itself.
 		$context =~ s/\r[^\r]+$//;
 		if ( exists $docngrams{$ngram} ) {
 			$docngrams{$ngram} = $docngrams{$ngram} + 1;

@@ -3,7 +3,7 @@
 kunilovskaya
 compare surprisal values from ku_genzelcharniak-vrt.py and from genzelcharniak-vrt_v0.2.1.pl
 
-Run instructions:
+Run instructions (check input paths):
 python3 ku_test_output.py
 
 """
@@ -40,8 +40,8 @@ def my_rmse(trues, predictions):
 
 
 if __name__ == "__main__":
-    pl = 'output/truest_BROWN-SPR.vrt'
-    py = 'output/ku_BROWN-SPR.vrt'
+    pl = 'output/perl_BROWN-SPR.vrt'
+    py = 'output/py_BROWN-SPR.vrt'
 
     # collect values in 4th (cross) and 5th (self) tab-separated columns
     true_cross_ent, pl_lines = get_vals(pl, "cross")
@@ -54,11 +54,11 @@ if __name__ == "__main__":
     pearson, p_val = pearsonr(true_cross_ent, test_cross_ent)
     print('%.3f, p < %.3f' % (pearson, p_val))
 
-    true_self_ent = get_vals(pl, "self")
-    test_self_ent = get_vals(py, "self")
+    true_self_ent, _ = get_vals(pl, "self")
+    test_self_ent, _ = get_vals(py, "self")
 
     try:
-        pearson, p_val = pearsonr(np.asarray(true_self_ent), np.asarray(test_self_ent))
+        pearson, p_val = pearsonr(true_self_ent, test_self_ent)
         print('%.3f, p < %.3f' % (pearson, p_val))
     except AttributeError:
         print('I am not sure what happened to the format')
@@ -70,8 +70,11 @@ if __name__ == "__main__":
     # *** 4 ***
     my_mismatch = set(pl_lines).difference(set(py_lines))
     counter = 0
-    for i in my_mismatch:
-        print(i.strip().replace("\t", " "))
+    print('Five examples of lines in perl output that have differences in python output. '
+          'Diffs have to do with precision of calculations')
+    for num, i in enumerate(my_mismatch):
+        if num < 5:
+            print(f"\t{i.strip()}")
         counter += 1
     print(f"Number of lines with mismatching content: {counter} ({counter/len(true_cross_ent):.2f}%)")
 

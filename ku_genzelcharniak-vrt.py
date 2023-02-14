@@ -1,6 +1,7 @@
 """
 Maria Kunilovskaya
-31 January 2023
+8 Feb: replaced "\r", which could not be avoided in Perl, with "_" for ngram tokenisation (output is tested)
+31 January 2023:
 from genzelcharniak-vrt_v0.2.1.pl which accepts TreeTagger output
 Annotate a vrt file with bits per word (surprisal) adding to the input new fields with values for:
 (1) The cross entropy H(Doc|Rest)
@@ -9,7 +10,7 @@ where Doc is the language model for the document at hand, Rest for the rest of t
 Requires sentence tags <s>, </s> to calculate the entropy per sentence
 
 TESTRUN:
--- python3 ku_genzelcharniak-vrt.py input/brown_exerpt_A-1.vrt output/ku_BROWN-SPR.vrt
+-- python3 ku_genzelcharniak-vrt.py input/brown_exerpt_A-1.vrt output/py_BROWN-SPR.vrt
 
 NB! ku_test_output.py compares the output of ku_genzelcharniak-vrt.py and genzelcharniak-vrt_v0.2.1.pl
 """
@@ -58,7 +59,7 @@ def collect_ngrams(file, terms=None, maxngram=None):
             elif line.startswith("</text"):
                 # subtract last sentence marker to compensate for the extra sentence marker at the beginning of text.
                 ngrams["SENT"] -= 1
-                ngrams["\r"] -= 1
+                ngrams["_"] -= 1
             elif line.startswith("<"):
                 pass
             else:
@@ -88,23 +89,23 @@ def addup(term, ngrams=None, ngramtypes=None, prevterms=None):
     else:
         ngrams[ngram] = 1
         # counter for unigram types (counted only once)
-        if "\r" in ngramtypes:
-            ngramtypes["\r"] += 1
+        if "_" in ngramtypes:
+            ngramtypes["_"] += 1
         else:
-            ngramtypes["\r"] = 1
+            ngramtypes["_"] = 1
 
     # counter for unigram tokens
-    if "\r" in ngrams:
-        ngrams["\r"] += 1
+    if "_" in ngrams:
+        ngrams["_"] += 1
     else:
-        ngrams["\r"] = 1
+        ngrams["_"] = 1
 
     # same counters for all n-grams (tokens and types of orders 1,2,3)
     # sliding window in sentence boundaries: max context 3 + term
     for i in range(len(prevterms), 0, -1):
-        ngram = prevterms[i - 1] + "\r" + ngram
+        ngram = prevterms[i - 1] + "_" + ngram
         # splitting once starting from the right and getting first element, effectively deleting the last word
-        context = ngram.rsplit("\r", 1)[0]
+        context = ngram.rsplit("_", 1)[0]
         # adding bigrams and trigrams to the unigrams obtained in collect_terms
         if ngram in ngrams:
             ngrams[ngram] += 1
@@ -114,8 +115,6 @@ def addup(term, ngrams=None, ngramtypes=None, prevterms=None):
                 ngramtypes[context] += 1
             else:
                 ngramtypes[context] = 1
-    if "SENT\rSENT" in ngrams:
-        print('GOTCHA in addup')
 
     return ngrams, ngramtypes, prevterms
 
@@ -128,25 +127,25 @@ def addupdoc(term, ngrams=None, ngramtypes=None, prevterms=None, docngrams=None,
     else:
         docngrams[ngram] = 1
         # counting unigram types
-        if "\r" in docngramtypes:
-            docngramtypes["\r"] += 1
+        if "_" in docngramtypes:
+            docngramtypes["_"] += 1
         else:
-            docngramtypes["\r"] = 1
+            docngramtypes["_"] = 1
 
-    if "\r" not in restngramtypes:
-        restngramtypes["\r"] = ngramtypes["\r"]
+    if "_" not in restngramtypes:
+        restngramtypes["_"] = ngramtypes["_"]
 
     # ngram only occurs in this document
     if ngrams[ngram] - docngrams[ngram] == 0:
-        restngramtypes["\r"] -= 1
-    if "\r" in docngrams:
-        docngrams["\r"] += 1
+        restngramtypes["_"] -= 1
+    if "_" in docngrams:
+        docngrams["_"] += 1
     else:
-        docngrams["\r"] = 1
+        docngrams["_"] = 1
     for i in range(len(prevterms), 0, -1):  # iterate from max 3 to 1
-        ngram = prevterms[i - 1] + "\r" + ngram
+        ngram = prevterms[i - 1] + "_" + ngram
 
-        context = ngram.rsplit("\r", 1)[0]
+        context = ngram.rsplit("_", 1)[0]
         if ngram in docngrams:
             docngrams[ngram] += 1
         else:
@@ -169,17 +168,17 @@ def get_wb_ent(ngram, count=None, docngramtypes=None, docngrams=None):
     if count > 8:
         raise Exception("what? " + ngram)
     if ngram == '':  # exausted rest, i.e. right-hand side context
-        return 1.0 / docngramtypes["\r"]
+        return 1.0 / docngramtypes["_"]
 
     context = ngram
     rest = ngram
-    if "\r" in context:
+    if "_" in context:
         # perl: $context =~ s/\r[^\r]+$//; = remove all characters from the first \r character to the end of the string
-        context = context.rsplit("\r", 1)[0]  # get first word, lose \r
+        context = context.rsplit("_", 1)[0]  # get first word, lose \r
         # split once at the first _ and get the contents on the right side of the split, in effect losing the first word
-        rest = rest.split("\r", 1)[1]
+        rest = rest.split("_", 1)[1]
     else:
-        context = "\r"
+        context = "_"
         rest = ''
 
     typecount = docngramtypes[context]
@@ -195,7 +194,7 @@ def get_wb_ent(ngram, count=None, docngramtypes=None, docngrams=None):
 def get_ent_bits(term, prevterms=None, docngramtypes=None, docngrams=None):
     ngram = term
     for i in range(len(prevterms), 0, -1):
-        ngram = prevterms[i - 1] + "\r" + ngram
+        ngram = prevterms[i - 1] + "_" + ngram
     return -math.log2(get_wb_ent(ngram, count=0, docngramtypes=docngramtypes, docngrams=docngrams))
 
 
@@ -203,16 +202,16 @@ def get_wb_cross(ngram, count=None, ngrams=None, docngrams=None, restngramtypes=
     if count > 8:
         raise Exception("what? {}".format(ngram))
     if ngram == '':
-        return 1.0 / restngramtypes["\r"]
+        return 1.0 / restngramtypes["_"]
 
     context = ngram
     rest = ngram
-    if "\r" in context:
-        # context.replace("\r", "#")
-        context = context.rsplit("\r", 1)[0]  # extract the portion of the string before the last \r
-        rest = rest.split("\r", 1)[1]  # extract the portion of the string after the first \r
+    if "_" in context:
+        # context.replace("_", "#")
+        context = context.rsplit("_", 1)[0]  # extract the portion of the string before the last \r
+        rest = rest.split("_", 1)[1]  # extract the portion of the string after the first \r
     else:
-        context = "\r"
+        context = "_"
         rest = ''
 
     typecount = restngramtypes[context]
@@ -234,7 +233,7 @@ def get_cross_bits(term, prevterms=None, ngrams=None, docngrams=None, restngramt
                    tau=None, gamma=None, lmbda=None):
     ngram = term
     for i in range(len(prevterms), 0, -1):
-        ngram = prevterms[i - 1] + "\r" + ngram
+        ngram = prevterms[i - 1] + "_" + ngram
 
     # own probability of the term:
     prob = get_wb_cross(ngram, count=0, ngrams=ngrams, docngrams=docngrams, restngramtypes=restngramtypes)
@@ -247,17 +246,17 @@ def get_cross_bits(term, prevterms=None, ngrams=None, docngrams=None, restngramt
         # they are added below the call of get_cross_bits function in compute_bits
         # there is no update loop for these dicts
             cacheprob = (gamma * (tau ** (cache_count - last_occ[term])) * cache_terms[term] / cache_tokens) + \
-                        (1 - gamma) * ((ngrams[term] - docngrams[term]) / (ngrams["\r"] - docngrams["\r"]))
+                        (1 - gamma) * ((ngrams[term] - docngrams[term]) / (ngrams["_"] - docngrams["_"]))
         # in Perl, if a key does not exist in the hash, it will return undef instead of throwing an error
         # If used in the expression, the expression will evaluate to 0
         except KeyError:
             cacheprob = (gamma * (tau ** (cache_count - 0)) * 0 / cache_tokens) + (
-                    1 - gamma) * ((ngrams[term] - docngrams[term]) / (ngrams["\r"] - docngrams["\r"]))
+                    1 - gamma) * ((ngrams[term] - docngrams[term]) / (ngrams["_"] - docngrams["_"]))
         prob = lmbda * prob + (1 - lmbda) * cacheprob
 
     if prob > 1:
         context = ngram
-        context = context.rsplit("\r", 1)[0]
+        context = context.rsplit("_", 1)[0]
         raise Exception(
             f"{ngram},{prob},{docngrams[ngram]},{restngramtypes[context]},{docngrams[term]}")  # {restngramtypes['\r ']}
 
@@ -279,12 +278,11 @@ def compute_bits(lines=None, terms=None, ngrams=None, docngrams=None, docngramty
 
     out_buffer = ""
     sent_buffer = ""
-    sentence_start = 0
     sentence_atts = ""
     for i in range(len(lines)):
         line = lines[i]
         if line.startswith("<text"):
-            out_buffer += line
+            out_buffer += line  # don't strip lines for a more readable xml
         elif line.startswith("</text"):
             out_buffer += line
 
@@ -296,9 +294,8 @@ def compute_bits(lines=None, terms=None, ngrams=None, docngrams=None, docngramty
             # end of this text
             break
         elif line.startswith("<s"):
-            sentence_start = 1
             sentence_atts = line[3:].strip()[:-1]  # get contents of <s> tag, losing the tag, which adding a newline?
-
+            out_buffer += line
         elif line.startswith("</s"):
             cross_avg = 0
             ent_avg = 0
@@ -306,22 +303,16 @@ def compute_bits(lines=None, terms=None, ngrams=None, docngrams=None, docngramty
                 cross_avg = cross_sum / c_sent
                 ent_avg = ent_sum / c_sent
             if opt_nocross:
-                out_buffer += f"<s{sentence_atts} {ent_name}=\"{ent_avg:.3f}\">\n{sent_buffer}"
+                out_buffer += f"<s{sentence_atts} {ent_name}=\"{ent_avg:.2f}\">\n{sent_buffer}"
             elif opt_noent:
-                out_buffer += f"<s{sentence_atts} {cross_name}=\"{cross_avg:.3f}\">\n{sent_buffer}"
+                out_buffer += f"<s{sentence_atts} {cross_name}=\"{cross_avg:.2f}\">\n{sent_buffer}"
             else:
-                out_buffer += f"<s{sentence_atts} {cross_name}=\"{cross_avg:.3f}\" {ent_name}=\"{ent_avg:.3f}\">\n{sent_buffer}"
+                out_buffer += f"<s{sentence_atts} {cross_name}=\"{cross_avg:.2f}\" {ent_name}=\"{ent_avg:.2f}\">\n{sent_buffer}"
             cross_sum = 0
             ent_sum = 0
             c_sent = 0
-            out_buffer += line
             sent_buffer = ""
-            sentence_start = 0
-        elif line.startswith("<"):
-            if sentence_start:
-                sent_buffer += line
-            else:
-                out_buffer += line
+            out_buffer += line
         else:
             # processing lines containing tokens
             fields = line.strip().split("\t")
@@ -343,6 +334,7 @@ def compute_bits(lines=None, terms=None, ngrams=None, docngrams=None, docngramty
 
             ent_bits = get_ent_bits(term1, prevterms=prevterms, docngramtypes=docngramtypes, docngrams=docngrams)
 
+            # formating vrt word-lines appending the srp and/or srplocal values
             if opt_nocross:
                 sent_buffer += f"{line.strip()}\t{ent_bits:.2f}\n"
             elif opt_noent:
@@ -396,7 +388,7 @@ def compute_entropy(file, outfile, terms=None, ngrams=None, ngramtypes=None, opt
                     lines.append(line)
 
                     docngrams["SENT"] -= 1
-                    docngrams["\r"] -= 1
+                    docngrams["_"] -= 1
 
                     # compute and write to file cross-entropy and self-surprisal values
                     compute_bits(lines=lines, terms=terms, ngrams=ngrams, docngrams=docngrams,
@@ -412,8 +404,7 @@ def compute_entropy(file, outfile, terms=None, ngrams=None, ngramtypes=None, opt
                     fields = line.strip().split("\t")
                     term = fields[0]
                     pos = fields[1]
-                    # this is where you dont want to strip! to avoid losing \r
-                    term = term.lower()
+                    term = term.strip().lower()
                     if pos == "SENT":
                         term = "SENT"
                     elif term in terms and terms[term] == 1:
@@ -441,7 +432,7 @@ if __name__ == "__main__":
                         default=0.9)
     parser.add_argument("--tau", type=float, help="decay parameter for cache-prob (only 1 or 0.99 usually makes sense)",
                         default=1.0)
-    parser.add_argument("--maxngram", type=int, help="context length for ngrams; default=3", default=3)
+    parser.add_argument("--maxngram", type=int, help="context length for ngrams", default=3)
     parser.add_argument("--cross_name", "--cn", type=str, help="name for cross-entropy H(Doc|Rest) in sentence tag",
                         default="srp")
     parser.add_argument("--ent_name", "--en", type=str, help="name for self-entropy H(Doc) in sentence tag",
@@ -478,23 +469,23 @@ if __name__ == "__main__":
     #     # if '\r ' in k:
     #     # if k == '\r ':
     #     print(k, v)
-    with open('cr_ku_ngrams.txt', 'w') as outdict:
+    with open('temp/cr_ku_ngrams.txt', 'w') as outdict:
         for (k, v) in list(my_ngrams.items()):  # [:-50]
             # if '\r ' in k:
             # if k == '\r ':
-            # if "\r" in k:
-                # print(k.replace("\r", "_"))
-                # k = k.replace("\r", "\n")
+            # if "_" in k:
+                # print(k.replace("_", "_"))
+                # k = k.replace("_", "\n")
             outstring = f'{k}\t{v}'
             print(outstring, file=outdict)
 
-    with open('cr_ku_ngramtypes.txt', 'w') as outdict:
+    with open('temp/cr_ku_ngramtypes.txt', 'w') as outdict:
         for (k, v) in list(my_ngramtypes.items()):  # [:-50]
             # if '\r ' in k:
             # if k == '\r ':
-            # if "\r" in k:
-                # print(k.replace("\r", "#"))
-                # k = k.replace("\r", "\n")
+            # if "_" in k:
+                # print(k.replace("_", "#"))
+                # k = k.replace("_", "\n")
             outstring = f'{k}\t{v}'
             print(outstring, file=outdict)
 
