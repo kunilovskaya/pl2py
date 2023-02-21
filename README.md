@@ -24,10 +24,10 @@ Surprisal is -log2(prob), i.e. inverse probability measured in bits of informati
   if they are defined as H = -sum(pk * log(pk)) or CE = -sum(pk * log(qk))
 
 ## Chronicles:
+* 
+* 13-21Feb: took a productive break for InfoTheory course and writing-up of a SIGHUM submission
 * 6Feb-10Feb: adapting *.py to accept CoNLL-U format
 * 25Jan-5Feb: translating from Perl to Python, creating a test script (see ku_genzelcharniak-vrt.py and ku_test_output.py), revising LModelling concepts
-
-[//]: # (* 15-25 Jan: understanding available data &#40;inc. expected output&#41; and analysis of the script in and out)
-
-[//]: # (* START: 10 Dec 2022 with setting access to the repository and locating THE perl script)
+* 15-25 Jan: understanding available data &#40;inc. expected output&#41; and analysis of the script in and out)
+* START: 10 Dec 2022 got access to the Lehrstul server and located THE perl script
 

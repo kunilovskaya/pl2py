@@ -207,7 +207,6 @@ def get_wb_cross(ngram, count=None, ngrams=None, docngrams=None, restngramtypes=
     context = ngram
     rest = ngram
     if "_" in context:
-        # context.replace("_", "#")
         context = context.rsplit("_", 1)[0]  # extract the portion of the string before the last \r
         rest = rest.split("_", 1)[1]  # extract the portion of the string after the first \r
     else:
@@ -218,7 +217,7 @@ def get_wb_cross(ngram, count=None, ngrams=None, docngrams=None, restngramtypes=
     # if freq in corpus == freq in the current doc
     if ngrams[ngram] - docngrams[ngram] == 0:
         return get_wb_cross(rest, count=count, ngrams=ngrams, docngrams=docngrams, restngramtypes=restngramtypes)
-    # maximum likelihood estimation: counts (excluding this doc) normalised to size of corpus (excluding this doc)
+    # maximum likelihood estimation = hits (excluding this doc) normalised to size of corpus (excluding this doc)
     mle = (ngrams[ngram] - docngrams[ngram]) / (ngrams[context] - docngrams[context])
     lambda1 = (ngrams[context] - docngrams[context]) / (ngrams[context] - docngrams[context] + typecount)
 
