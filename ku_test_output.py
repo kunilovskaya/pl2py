@@ -1,7 +1,7 @@
 """
 5 Feb 2023
 kunilovskaya
-compare surprisal values from ku_genzelcharniak-vrt.py and from genzelcharniak-vrt_v0.2.1.pl
+compare surprisal values from ku_genzelcharniak_vrt.py and from genzelcharniak-vrt_v0.2.1.pl
 
 Run instructions (check input paths):
 python3 ku_test_output.py

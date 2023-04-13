@@ -10,9 +10,9 @@ where Doc is the language model for the document at hand, Rest for the rest of t
 Requires sentence tags <s>, </s> to calculate the entropy per sentence
 
 TESTRUN:
--- python3 ku_genzelcharniak-vrt.py input/brown_exerpt_A-1.vrt output/py_BROWN-SPR.vrt
+-- python3 ku_genzelcharniak_vrt.py input/brown_exerpt_A-1.vrt output/py_BROWN-SPR.vrt
 
-NB! ku_test_output.py compares the output of ku_genzelcharniak-vrt.py and genzelcharniak-vrt_v0.2.1.pl
+NB! ku_test_output.py compares the output of ku_genzelcharniak_vrt.py and genzelcharniak-vrt_v0.2.1.pl
 """
 
 
@@ -35,7 +35,7 @@ def collect_terms(file):
                     # avoid stripping \r
                     fields = line.strip().split("\t")
                     term = fields[0].strip().lower()  # token
-                    pos = fields[1]
+                    pos = fields[2]
                     if pos == "SENT":
                         term = "SENT"
                     terms[term] += 1
@@ -65,7 +65,7 @@ def collect_ngrams(file, terms=None, maxngram=None):
             else:
                 fields = line.strip().split("\t")
                 term = fields[0].strip().lower()
-                pos = fields[1]
+                pos = fields[2]
                 if pos == "SENT":  # UD has no SENT markers
                     term = "SENT"
                 elif term in terms and terms[term] == 1:
@@ -207,19 +207,26 @@ def get_wb_cross(ngram, count=None, ngrams=None, docngrams=None, restngramtypes=
     context = ngram
     rest = ngram
     if "_" in context:
-        context = context.rsplit("_", 1)[0]  # extract the portion of the string before the last \r
-        rest = rest.split("_", 1)[1]  # extract the portion of the string after the first \r
+        context = context.rsplit("_", 1)[0]  # extract the portion of the string before the last _
+        rest = rest.split("_", 1)[1]  # extract the portion of the string after the first _
     else:
         context = "_"
         rest = ''
 
     typecount = restngramtypes[context]
+
+    if context == 'wein_kein_önologisch':
+        print(typecount)
+
     # if freq in corpus == freq in the current doc
     if ngrams[ngram] - docngrams[ngram] == 0:
+        if context == 'wein_kein_önologisch':
+            print('Am I here?')
         return get_wb_cross(rest, count=count, ngrams=ngrams, docngrams=docngrams, restngramtypes=restngramtypes)
-    # maximum likelihood estimation = hits (excluding this doc) normalised to size of corpus (excluding this doc)
-    mle = (ngrams[ngram] - docngrams[ngram]) / (ngrams[context] - docngrams[context])
-    lambda1 = (ngrams[context] - docngrams[context]) / (ngrams[context] - docngrams[context] + typecount)
+    else:
+        # maximum likelihood estimation = hits (excluding this doc) normalised to size of corpus (excluding this doc)
+        mle = (ngrams[ngram] - docngrams[ngram]) / (ngrams[context] - docngrams[context])
+        lambda1 = (ngrams[context] - docngrams[context]) / (ngrams[context] - docngrams[context] + typecount)
 
     return lambda1 * mle + (1 - lambda1) * get_wb_cross(rest, count + 1, ngrams=ngrams, docngrams=docngrams,
                                                         restngramtypes=restngramtypes)
@@ -293,7 +300,7 @@ def compute_bits(lines=None, terms=None, ngrams=None, docngrams=None, docngramty
             # end of this text
             break
         elif line.startswith("<s"):
-            sentence_atts = line[3:].strip()[:-1]  # get contents of <s> tag, losing the tag, which adding a newline?
+            sentence_atts = line[3:].strip()[:-1]  # get contents of <s  tag, losing the tag itself
             out_buffer += line
         elif line.startswith("</s"):
             cross_avg = 0
@@ -316,7 +323,7 @@ def compute_bits(lines=None, terms=None, ngrams=None, docngrams=None, docngramty
             # processing lines containing tokens
             fields = line.strip().split("\t")
             term = fields[0]
-            pos = fields[1]
+            pos = fields[2]
             term1 = term.strip().lower()
             if term1 in terms and terms[term1] == 1:
                 term1 = "UNK"
@@ -370,9 +377,9 @@ def compute_entropy(file, outfile, terms=None, ngrams=None, ngramtypes=None, opt
                     print(line.split('"')[1])
                     lines = []
                     lines.append(line)
-                    docngrams = {}  # freq dict of all ngram tokens for this doc
-                    docngramtypes = {}  # counts of ngramtypes in this document, stored in lines variable
-                    restngramtypes = {}  # counts of ngramtypes in other documents
+                    docngrams = defaultdict(int)  # freq dict of all ngram tokens for this doc
+                    docngramtypes = defaultdict(int)  # counts of ngramtypes in this document, stored in lines variable
+                    restngramtypes = defaultdict(int)  # counts of ngramtypes in other documents
 
                     # insert a sentence marker at the beginning of a document
                     prevterms = []
@@ -402,7 +409,7 @@ def compute_entropy(file, outfile, terms=None, ngrams=None, ngramtypes=None, opt
                     lines.append(line)
                     fields = line.strip().split("\t")
                     term = fields[0]
-                    pos = fields[1]
+                    pos = fields[2]
                     term = term.strip().lower()
                     if pos == "SENT":
                         term = "SENT"
